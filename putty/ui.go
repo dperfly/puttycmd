@@ -11,6 +11,7 @@ import (
 )
 
 var Outputlog = widget.NewMultiLineEntry()
+var LoginLog = widget.NewLabel("")
 
 func Run() {
 
@@ -22,8 +23,8 @@ func Run() {
 	loadPage := myapp.NewWindow("")
 	loadPage.Resize(fyne.NewSize(300, 200))
 	loadPage.SetContent(container.NewVBox(
-		widget.NewLabel(""),
 		container.NewGridWithColumns(1, widget.NewLabel("Please wait while initializing the environment")),
+		LoginLog,
 		container.NewGridWithColumns(1, widget.NewProgressBarInfinite()),
 	))
 	loadPage.CenterOnScreen()
@@ -110,13 +111,23 @@ func Run() {
 			password = passInput.Text
 			host = hostInput.Text
 			port = portInput.Text
+			loginPage.Hide()
+			loadPage.Show()
+
+			LoginLog.SetText("Check whether SSH can connect...")
 			session, err := SSH(hostInput.Text, portInput.Text, userInput.Text, passInput.Text)
+
 			if err != nil {
-				dial := dialog.NewError(err, loginPage)
+				dial := dialog.NewError(err, loadPage)
 				dial.Resize(fyne.NewSize(300, 100))
 				dial.Show()
+				dial.SetOnClosed(func() {
+					loadPage.Hide()
+					loginPage.Show()
+				})
 				return
 			}
+			LoginLog.SetText("Check whether SSH communicates normally...")
 			isOk := CheckSSH(session)
 			if !isOk {
 				dial := dialog.NewError(err, loginPage)
@@ -124,8 +135,7 @@ func Run() {
 				dial.Show()
 				return
 			}
-			loginPage.Hide()
-			loadPage.Show()
+			LoginLog.SetText("Install curl tool remotely...")
 			// install curl
 			installCurl := func() error {
 				sftpClient, err := SftpConnect()
@@ -138,7 +148,8 @@ func Run() {
 				}
 				defer dstFile.Close()
 				dstFile.Write(resourceCurl.StaticContent)
-				//set chmod +x curl
+
+				LoginLog.SetText("Set curl executable permissions...")
 				session, err := GetSession()
 				defer session.Close()
 				if err != nil {
