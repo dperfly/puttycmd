@@ -11,7 +11,7 @@ const (
 const (
 	Domain  = "127.0.0.1"
 	OCUPost = 9773
-	CNDPost = 29773
+	CNSPost = 29773
 )
 
 const (

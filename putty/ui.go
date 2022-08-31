@@ -2,6 +2,7 @@ package putty
 
 import (
 	"errors"
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -9,12 +10,27 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
-var Output = widget.NewMultiLineEntry()
+var Outputlog = widget.NewMultiLineEntry()
 
 func Run() {
-	app := app.New()
-	nw := app.NewWindow("puttyCmd")
-	nw.SetContent(container.NewVBox(
+
+	var myapp = app.New()
+
+	Outputlog.SetMinRowsVisible(10)
+	Outputlog.Wrapping = fyne.TextWrapBreak
+
+	loadPage := myapp.NewWindow("")
+	loadPage.Resize(fyne.NewSize(300, 200))
+	loadPage.SetContent(container.NewVBox(
+		widget.NewLabel(""),
+		container.NewGridWithColumns(1, widget.NewLabel("Please wait while initializing the environment")),
+		container.NewGridWithColumns(1, widget.NewProgressBarInfinite()),
+	))
+	loadPage.CenterOnScreen()
+
+	puttyCmdPage := myapp.NewWindow("puttyCmd")
+	puttyCmdPage.CenterOnScreen()
+	puttyCmdPage.SetContent(container.NewVBox(
 		widget.NewLabel("Privacy mode change"),
 		container.NewGridWithColumns(4,
 			widget.NewButton("Incognito", Incognito),
@@ -24,29 +40,30 @@ func Run() {
 		widget.NewLabel("disable services"),
 		container.NewGridWithColumns(3,
 			widget.NewLabel("rhonk"),
-			widget.NewButton("recover", EnableRhonk),
+			widget.NewButton("recover", RecoverRhonk),
 			widget.NewButton("disable", DisableRhonk)),
 		container.NewGridWithColumns(3,
 			widget.NewLabel("carfinder"),
-			widget.NewButton("recover", EnableCarFinder),
+			widget.NewButton("recover", RecoverCarFinder),
 			widget.NewButton("disable", DisableCarFinder)),
 		container.NewGridWithColumns(3,
 			widget.NewLabel("vehiclehealth"),
-			widget.NewButton("recover", EnableVehicleHealth),
+			widget.NewButton("recover", RecoverVehicleHealth),
 			widget.NewButton("disable", DisableVehicleHealth)),
 		container.NewGridWithColumns(3,
 			widget.NewLabel("statusreport"),
-			widget.NewButton("recover", EnableStatusReport),
+			widget.NewButton("recover", RecoverStatusReport),
 			widget.NewButton("disable", DisableStatusReport)),
 		widget.NewLabel("download ocu/cns service list"),
 		container.NewGridWithColumns(2,
 			widget.NewButton("ocu", OCU),
 			widget.NewButton("cns", CNS)),
-		Output,
+		Outputlog,
 	))
-	nw.Resize(fyne.Size{Width: 800, Height: 400})
+	puttyCmdPage.Resize(fyne.Size{Width: 800, Height: 600})
 
-	loginPage := app.NewWindow("login")
+	loginPage := myapp.NewWindow("login")
+	loginPage.CenterOnScreen()
 	hostInput := widget.NewEntry()
 	hostInput.SetText(host)
 	portInput := widget.NewEntry()
@@ -57,47 +74,11 @@ func Run() {
 	passInput.Password = true
 	passInput.SetText(password)
 
-	// install curl
-	installCurl := func() {
-		sftpClient, err := SftpConnect()
-		if err != nil {
-			dial := dialog.NewError(err, loginPage)
-			dial.Resize(fyne.NewSize(300, 100))
-			dial.Show()
-		}
-		remoteFile := "/mnt/"
-		fileName := "curl"
-		dstFile, err := sftpClient.Create(remoteFile + fileName)
-		if err != nil {
-			dial := dialog.NewError(err, loginPage)
-			dial.Resize(fyne.NewSize(300, 100))
-			dial.Show()
-		}
-		defer dstFile.Close()
-		dstFile.Write(resourceCurl.StaticContent)
-		//set chmod +x curl
-		session, err := GetSession()
-		defer session.Close()
-		if err != nil {
-			dial := dialog.NewError(err, loginPage)
-			dial.Resize(fyne.NewSize(300, 100))
-			dial.Show()
-		}
-		_, err = session.Output("cd /mnt; chmod +x curl")
-		if err != nil {
-			dial := dialog.NewError(err, loginPage)
-			dial.Resize(fyne.NewSize(300, 100))
-			dial.Show()
-		}
-
-	}
-
 	loginPage.SetContent(container.NewVBox(
 		container.NewGridWithColumns(2, widget.NewLabel("host"), hostInput),
 		container.NewGridWithColumns(2, widget.NewLabel("port"), portInput),
 		container.NewGridWithColumns(2, widget.NewLabel("username"), userInput),
 		container.NewGridWithColumns(2, widget.NewLabel("password"), passInput),
-
 		widget.NewButton("login", func() {
 			if hostInput.Text == "" {
 				dial := dialog.NewError(errors.New("host input err"), loginPage)
@@ -143,14 +124,51 @@ func Run() {
 				dial.Show()
 				return
 			}
-			installCurl()
-
 			loginPage.Hide()
-			nw.Show()
+			loadPage.Show()
+			// install curl
+			installCurl := func() error {
+				sftpClient, err := SftpConnect()
+				if err != nil {
+					return err
+				}
+				dstFile, err := sftpClient.Create(fmt.Sprintf("%s%s", remoteFile, fileName))
+				if err != nil {
+					return err
+				}
+				defer dstFile.Close()
+				dstFile.Write(resourceCurl.StaticContent)
+				//set chmod +x curl
+				session, err := GetSession()
+				defer session.Close()
+				if err != nil {
+					return err
+				}
+				_, err = session.Output("cd /mnt; chmod +x curl")
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+			err = installCurl()
+			if err != nil {
+				dial := dialog.NewError(err, loadPage)
+				dial.Resize(fyne.NewSize(300, 100))
+				dial.Show()
+				dial.SetOnClosed(func() {
+					loadPage.Hide()
+					loginPage.Show()
+				})
+
+			} else {
+				loadPage.Hide()
+				puttyCmdPage.Show()
+			}
+
 		}),
 	))
-	loginPage.Resize(fyne.Size{Width: 400, Height: 300})
+	loginPage.Resize(fyne.Size{Width: 400, Height: 200})
 	loginPage.Show()
 
-	app.Run()
+	myapp.Run()
 }
