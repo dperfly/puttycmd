@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	"os"
 )
 
 var Outputlog = widget.NewMultiLineEntry()
@@ -20,7 +21,11 @@ func Run() {
 	Outputlog.SetMinRowsVisible(10)
 	Outputlog.Wrapping = fyne.TextWrapBreak
 
-	loadPage := myapp.NewWindow("")
+	loadPage := myapp.NewWindow("loading")
+	loadPage.SetOnClosed(
+		func() {
+			os.Exit(0)
+		})
 	loadPage.Resize(fyne.NewSize(300, 200))
 	loadPage.SetContent(container.NewVBox(
 		container.NewGridWithColumns(1, widget.NewLabel("Please wait while initializing the environment")),
@@ -30,6 +35,9 @@ func Run() {
 	loadPage.CenterOnScreen()
 
 	puttyCmdPage := myapp.NewWindow("puttyCmd")
+	puttyCmdPage.SetOnClosed(func() {
+		os.Exit(0)
+	})
 	puttyCmdPage.CenterOnScreen()
 	puttyCmdPage.SetContent(container.NewVBox(
 		widget.NewLabel("Privacy mode change"),
@@ -64,6 +72,10 @@ func Run() {
 	puttyCmdPage.Resize(fyne.Size{Width: 800, Height: 600})
 
 	loginPage := myapp.NewWindow("login")
+	loginPage.SetOnClosed(
+		func() {
+			os.Exit(0)
+		})
 	loginPage.CenterOnScreen()
 	hostInput := widget.NewEntry()
 	hostInput.SetText(host)
@@ -182,4 +194,5 @@ func Run() {
 	loginPage.Show()
 
 	myapp.Run()
+
 }
