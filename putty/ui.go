@@ -148,28 +148,27 @@ func Run() {
 				return
 			}
 			LoginLog.SetText("Install curl tool remotely...")
-			// install curl
+			//install curl
 			installCurl := func() error {
 				sftpClient, err := SftpConnect()
 				if err != nil {
-					return err
+					return errors.New(fmt.Sprintf("sftpClient: %s", err.Error()))
 				}
+				LoginLog.SetText("create remote file :/mnt/curl")
 				dstFile, err := sftpClient.Create(fmt.Sprintf("%s%s", remoteFile, fileName))
 				if err != nil {
-					return err
+					return errors.New(fmt.Sprintf("sftpClient.Create: %s", err.Error()))
 				}
 				defer dstFile.Close()
-				dstFile.Write(resourceCurl.StaticContent)
-
-				LoginLog.SetText("Set curl executable permissions...")
-				session, err := GetSession()
-				defer session.Close()
+				LoginLog.SetText("set remote file chmod:/mnt/curl 777")
+				err = dstFile.Chmod(777)
 				if err != nil {
-					return err
+					return errors.New(fmt.Sprintf(" chmod err: /mnt/curl %s", err))
 				}
-				_, err = session.Output("cd /mnt; chmod +x curl")
+				LoginLog.SetText("write to remote file :/mnt/curl")
+				n, err := dstFile.Write(resourceCurl.Content())
 				if err != nil {
-					return err
+					return errors.New(fmt.Sprintf(" write err: %d，%s", n, err))
 				}
 				return nil
 			}

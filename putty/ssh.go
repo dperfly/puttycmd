@@ -1,6 +1,7 @@
 package putty
 
 import (
+	"errors"
 	"fmt"
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -59,10 +60,10 @@ func SftpConnect() (*sftp.Client, error) { //参数: 远程服务器用户名, �
 	addr := host + ":" + port
 	sshClient, err := ssh.Dial("tcp", addr, clientConfig) //连接ssh
 	if err != nil {
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("ssh.Dial :%s", err.Error()))
 	}
 	if sftpClient, err := sftp.NewClient(sshClient); err != nil { //创建客户端
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("sftp.NewClient :%s", err.Error()))
 	} else {
 		return sftpClient, nil
 	}

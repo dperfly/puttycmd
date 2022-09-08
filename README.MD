@@ -11,6 +11,8 @@ puttyCmd工具说明
 3.执行成功后进入到第2个页面为具体的操作页面;
 ```
 登录页面    
-![img.png](.github/login.png)     
+![img.png](.github/login.png)       
+登录读条及初始化页       
+![img.png](.github/loading.png)     
 操作页面    
 ![img_1.png](.github/main.png)     
